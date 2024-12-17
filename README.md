@@ -1,5 +1,6 @@
 # Truss
 The main tool that is used to develop web &amp; mobile application
+
 How Truss Works 🛠️
 🚀 Overview
 Truss is a dynamic module generation tool that helps developers quickly create components, blueprints, and design systems for web applications. Built with a modern tech stack and integrated with OpenAI's API, Truss automates the generation of structured modules, reusable components, and project instructions.
