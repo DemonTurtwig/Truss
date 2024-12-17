@@ -30,7 +30,9 @@ Generate step-by-step instructions on:
 How to set up the project environment.
 Organize files and folders.
 Link and use generated modules effectively.
+
 ⚙️ How It Works
+
 1️⃣ User Input
 You start by describing your module or application requirements:
 
@@ -39,6 +41,7 @@ Tech Stack: React, Node.js, Tailwind CSS, etc.
 Functionality: Brief description of what the module does.
 Mobile Support: Yes (Responsive Design) or No.
 Module Focus: Logic/Structure or UI Design.
+
 2️⃣ Blueprint Creation (Optional)
 If you select "Generate Blueprint", Truss uses OpenAI's API to:
 Analyze your application description.
@@ -55,21 +58,25 @@ Clean and structured files in React, JavaScript, or custom frameworks.
 Component Design:
 Styles using Tailwind CSS, SCSS, or raw CSS.
 Optional design files can be customized as per the tech stack.
+
 4️⃣ File Download
 All generated files (code and styles) are packaged into a ZIP archive.
 You can download and directly integrate them into your project.
+
 5️⃣ Build Instructions
 Truss also generates detailed step-by-step instructions for:
 Setting up the environment.
 Installing dependencies.
 Organizing folders and linking components.
 Running the project.
+
 💻 Tech Stack
 Frontend: React, Tailwind CSS
 Backend: Node.js with Express
 AI Integration: OpenAI GPT-4 API
 File Management: JSZip for bundling files
 Styling: Tailwind CSS, SCSS, and responsive design principles
+
 🔧 How to Use Truss
 Describe Your Module:
 Fill out the form with details about your module or app.
@@ -79,6 +86,7 @@ Download:
 Review the output and download files.
 Integrate:
 Follow the provided instructions to integrate the module into your project.
+
 🌟 Why Use Truss?
 Save Time: Automates repetitive coding tasks.
 Clean Code: Generates production-ready files.
