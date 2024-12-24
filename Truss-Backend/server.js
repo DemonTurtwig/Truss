@@ -10,109 +10,171 @@ app.use(bodyParser.json());
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Endpoint 1: Generate Application Blueprint
-app.post("/api/generate-blueprint", async (req, res) => {
+// Endpoint 1: Unified Blueprint and Instruction Generation
+async function generateBlueprintAndInstructions(appDescription) {
+  const prompt = `
+    Generate a detailed blueprint and instructions for the following application:
+    "${appDescription}"
+
+    Include:
+    1. A complete file and folder structure, based on the app's requirements.
+    2. Step-by-step instructions to build and organize the application.
+
+    Format:
+    -- BLUEPRINT START --
+    [Blueprint: File structure]
+    -- BLUEPRINT END --
+    -- INSTRUCTIONS START --
+    [Instructions: How to set up and build the app]
+    -- INSTRUCTIONS END --
+  `;
+
+  console.log("🔹 Generating blueprint and instructions...");
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 16300,
+  });
+
+  const content = response.choices[0]?.message?.content || "";
+  console.log("🔹 Raw Response:", content);
+
+  // Extract blueprint and instructions
+  const blueprint =
+    content.split("-- BLUEPRINT START --")[1]?.split("-- BLUEPRINT END --")[0]?.trim() || "";
+  const instructions =
+    content.split("-- INSTRUCTIONS START --")[1]?.split("-- INSTRUCTIONS END --")[0]?.trim() || "";
+
+  return { blueprint, instructions };
+}
+
+// Unified API Endpoint
+app.post("/api/generate-blueprint-instructions", async (req, res) => {
   const { appDescription } = req.body;
 
-  const blueprintPrompt = `
-    Generate a detailed modular blueprint for the following application:
-    Description: "${appDescription}"
-
-    The blueprint should include:
-    1. A list of components/modules required to build the application.
-    2. The role of each component/module.
-    3. The suggested tech stack for each component.
-
-    Return the blueprint in a structured, readable format.
-  `;
-
   try {
-    console.log("🔹 Generating blueprint...");
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: blueprintPrompt }],
-      max_tokens: 16300,
-    });
+    const { blueprint, instructions } = await generateBlueprintAndInstructions(appDescription);
 
-    const blueprint = response.choices[0]?.message?.content || "No blueprint generated.";
-    console.log("✅ Blueprint generated:", blueprint);
-    res.json({ blueprint });
+    if (!blueprint || !instructions) {
+      throw new Error("Blueprint or Instructions missing from response.");
+    }
+
+    res.json({ blueprint, instructions });
   } catch (error) {
-    console.error("❌ Error generating blueprint:", error.message);
-    res.status(500).json({ error: "Failed to generate the blueprint." });
+    console.error("❌ Error:", error.message);
+    res.status(500).json({ error: "Failed to generate blueprint and instructions." });
   }
 });
 
-// Endpoint 2: Generate Detailed Build Instructions
-app.post("/api/generate-instructions", async (req, res) => {
-  const { blueprint } = req.body;
+// Endpoint 2: Live Chat Endpoint
 
-  const instructionsPrompt = `
-    Based on the following application blueprint:
-    "${blueprint}"
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage() }); // Use memory storage for files
 
-    Provide detailed step-by-step instructions for building this application. Include:
-    1. Setting up the project environment.
-    2. Installing dependencies.
-    3. File structure and folder organization.
-    4. How to link and build each component/module.
-    5. Final testing and deployment steps.
+app.post("/api/live-chat", upload.array("files", 10), async (req, res) => {
+  const { message } = req.body;
+  const uploadedFiles = req.files;
 
-    Format the response in markdown-friendly format.
+  if (!message?.trim() && (!uploadedFiles || uploadedFiles.length === 0)) {
+    return res
+      .status(400)
+      .json({ reply: "Please provide a valid query or upload files." });
+  }
+
+  let fileContents = "";
+  if (uploadedFiles && uploadedFiles.length > 0) {
+    fileContents = uploadedFiles
+      .map(
+        (file, index) =>
+          `### File ${index + 1}: ${file.originalname}\n\n${file.buffer.toString(
+            "utf-8"
+          )}`
+      )
+      .join("\n\n");
+  }
+
+  // Build the dynamic prompt
+  const prompt = `
+    You are Truss, an AI coding assistant and world-class software developer. Provide detailed and precise answers to help the user with their coding queries.
+
+    ### User Query:
+    ${message || "No text query provided."}
+
+    ${fileContents ? `### Uploaded Files:\n${fileContents}` : ""}
+
+    Guidelines:
+    - Be clear, concise, and actionable.
+    - Provide code snippets where applicable, formatted cleanly.
+    - Adapt to the user's tech stack or programming language if mentioned.
+    - Summarize file contents and integrate them into your response where relevant.
+    - Avoid unnecessary explanations.
+
+    Your Response:
   `;
 
   try {
-    console.log("🔹 Generating build instructions...");
+    console.log("🔹 Processing user query and files...");
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "user", content: instructionsPrompt }],
-      max_tokens: 16300,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 16300, // Adjust based on your requirements
     });
 
-    const instructions = response.choices[0]?.message?.content || "No instructions generated.";
-    console.log("✅ Build instructions generated.");
-    res.json({ instructions });
+    const reply =
+      response.choices[0]?.message?.content.trim() ||
+      "I don't know how to answer that.";
+
+    res.json({ reply });
   } catch (error) {
-    console.error("❌ Error generating instructions:", error.message);
-    res.status(500).json({ error: "Failed to generate the instructions." });
+    console.error("❌ Error in live chat:", error.message);
+    res.status(500).json({ reply: "An error occurred. Please try again." });
   }
 });
 
-// Endpoint 3: Generate Code Module
-app.post("/api/generate-module", async (req, res) => {
-  const { moduleName, techStack, functionality, mobileSupport } = req.body;
+//Endpoint 3: Marketing Strategy
 
-  const modulePrompt = `
-    Generate the following component/module for an application:
-    - Module Name: "${moduleName}"
-    - Tech Stack: "${techStack}"
-    - Functionality: "${functionality}"
-    - Mobile Support: ${mobileSupport === "yes" ? "Enabled" : "Disabled"}
+app.post("/api/marketing-strategy", async (req, res) => {
+  const { appName, description, targetAudience, features, monetization, developmentStage, platforms } = req.body;
 
-    Return the module code with:
-    -- CODE START --
-    [Code Content]
-    -- CODE END --
+  if (!appName || !description) {
+    return res.status(400).json({ reply: "Please provide all required details." });
+  }
+
+  const prompt = `
+    You are a marketing expert. Based on the provided details, evaluate the app's value and recommend marketing strategies.
+
+    App Name: ${appName}
+    Description: ${description}
+    Target Audience: ${targetAudience}
+    Features: ${features.join(", ")}
+    Monetization Strategy: ${monetization}
+    Development Stage: ${developmentStage}
+    Platforms: ${platforms.join(", ")}
+
+    Guidelines:
+    1. Provide a brief appraisal of the app's potential value.
+    2. Suggest marketing strategies tailored to the app's target audience and platforms.
+    3. Recommend pricing or monetization improvements.
+
+    Your response:
   `;
 
   try {
-    console.log(`🔹 Generating module: ${moduleName}`);
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "user", content: modulePrompt }],
+      messages: [{ role: "user", content: prompt }],
       max_tokens: 16300,
     });
 
-    const content = response.choices[0]?.message?.content || "No module generated.";
-    const codeContent = content.split("-- CODE START --")[1]?.split("-- CODE END --")[0]?.trim() || "";
-
-    console.log(`✅ Code for module "${moduleName}" generated.`);
-    res.json({ code: codeContent });
+    const reply = response.choices[0]?.message?.content || "Unable to generate a response.";
+    res.json({ reply });
   } catch (error) {
-    console.error(`❌ Error generating module "${moduleName}":`, error.message);
-    res.status(500).json({ error: "Failed to generate the module." });
+    console.error("Error in generating marketing strategy:", error.message);
+    res.status(500).json({ reply: "An error occurred. Please try again later." });
   }
 });
+
+
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));

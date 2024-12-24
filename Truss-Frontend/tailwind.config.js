@@ -8,6 +8,7 @@ module.exports = {
       fontFamily: {
         bebas: ["'Bebas Neue'", "cursive"],
         mono: ["'Roboto Mono'", "monospace"],
+        inter: ['Inter', 'sans-serif'],
       },
     },
   },
